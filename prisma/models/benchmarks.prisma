@@ -1,0 +1,14 @@
+// Минимальная заготовка для модели Benchmark.
+// Полная схема Benchmark будет реализована в отдельной задаче.
+// Здесь нужна только для корректной работы связи BenchmarkMetric.
+model Benchmark {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  metrics BenchmarkMetric[]
+
+  @@map("benchmarks")
+}

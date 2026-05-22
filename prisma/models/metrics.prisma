@@ -1,0 +1,21 @@
+model Metric {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique @db.VarChar(128)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  benchmarks BenchmarkMetric[]
+
+  @@map("metrics")
+}
+
+model BenchmarkMetric {
+  benchmarkId String @db.Uuid
+  metricId    String @db.Uuid
+
+  benchmark Benchmark @relation(fields: [benchmarkId], references: [id], onDelete: Cascade)
+  metric    Metric    @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  @@id([benchmarkId, metricId])
+  @@map("benchmark_metrics")
+}

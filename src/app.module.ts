@@ -9,6 +9,7 @@ import { RolesGuard } from '@/common/guards/roles.guard';
 import adminConfig from '@/configs/admin.config';
 import configuration from '@/configs/configuration';
 import dbConfig from '@/configs/database.config';
+import { MetricsModule } from '@/metrics/metrics.module';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { UsersModule } from '@/users/users.module';
 // import redisConfig from '@/configs/redis.config';
@@ -28,6 +29,7 @@ import { UsersModule } from '@/users/users.module';
     UsersModule,
     AuthModule,
     PrismaModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [
