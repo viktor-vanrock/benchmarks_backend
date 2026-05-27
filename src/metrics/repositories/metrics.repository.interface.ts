@@ -17,10 +17,6 @@ export abstract class IMetricsRepository {
     data: CreateMetricDefinitionDto,
   ): Promise<MetricDefinition>;
 
-  abstract upsertByName(
-    data: CreateMetricDefinitionDto,
-  ): Promise<MetricDefinition>;
-
   abstract updateMetricById(
     id: string,
     updateData: UpdateMetricDefinitionDto,

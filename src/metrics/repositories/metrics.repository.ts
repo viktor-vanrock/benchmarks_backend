@@ -15,7 +15,7 @@ export class MetricsRepository implements IMetricsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAllMetrics(
-    queryParams: PaginationDto,
+    queryParams: PaginationDto
   ): Promise<InfiniteDataResponseType<MetricDefinition>> {
     const {
       search,
@@ -26,7 +26,7 @@ export class MetricsRepository implements IMetricsRepository {
     } = queryParams;
 
     this.logger.debug(
-      `Fetching metric definitions: page=${page}, limit=${limit}, search="${search ?? ''}", sortColumn="${sortColumn ?? ''}", sortDirection="${sortDirection}"`,
+      `Fetching metric definitions: page=${page}, limit=${limit}, search="${search ?? ''}", sortColumn="${sortColumn ?? ''}", sortDirection="${sortDirection}"`
     );
 
     const where: Prisma.MetricDefinitionWhereInput = {};
@@ -74,7 +74,7 @@ export class MetricsRepository implements IMetricsRepository {
     ]);
 
     this.logger.debug(
-      `Fetched metric definitions: returned=${data.length}, total=${total}`,
+      `Fetched metric definitions: returned=${data.length}, total=${total}`
     );
 
     return { data, total };
@@ -101,7 +101,7 @@ export class MetricsRepository implements IMetricsRepository {
   }
 
   async createMetric(
-    data: CreateMetricDefinitionDto,
+    data: CreateMetricDefinitionDto
   ): Promise<MetricDefinition> {
     this.logger.debug(`Creating metric definition name="${data.name}"`);
 
@@ -114,31 +114,7 @@ export class MetricsRepository implements IMetricsRepository {
     });
 
     this.logger.log(
-      `Metric definition created: id="${metric.id}", name="${metric.name}"`,
-    );
-
-    return metric;
-  }
-
-  async upsertByName(
-    data: CreateMetricDefinitionDto,
-  ): Promise<MetricDefinition> {
-    this.logger.debug(`Upserting metric definition by name="${data.name}"`);
-
-    const writeInput = this.toPrismaWriteInput(data);
-
-    const metric = await this.prisma.metricDefinition.upsert({
-      where: { name: data.name },
-      create: writeInput,
-      update: writeInput,
-      include: {
-        priority: true,
-        direction: true,
-      },
-    });
-
-    this.logger.log(
-      `Metric definition upserted: id="${metric.id}", name="${metric.name}"`,
+      `Metric definition created: id="${metric.id}", name="${metric.name}"`
     );
 
     return metric;
@@ -146,7 +122,7 @@ export class MetricsRepository implements IMetricsRepository {
 
   async updateMetricById(
     id: string,
-    updateData: UpdateMetricDefinitionDto,
+    updateData: UpdateMetricDefinitionDto
   ): Promise<MetricDefinition> {
     this.logger.debug(`Updating metric definition id="${id}"`);
 
@@ -191,7 +167,7 @@ export class MetricsRepository implements IMetricsRepository {
   }
 
   private toPrismaWriteInput(
-    data: CreateMetricDefinitionDto,
+    data: CreateMetricDefinitionDto
   ): Prisma.MetricDefinitionCreateInput {
     return {
       name: data.name,
@@ -208,7 +184,7 @@ export class MetricsRepository implements IMetricsRepository {
   }
 
   private toPrismaUpdateInput(
-    data: UpdateMetricDefinitionDto,
+    data: UpdateMetricDefinitionDto
   ): Prisma.MetricDefinitionUpdateInput {
     const input: Prisma.MetricDefinitionUpdateInput = {};
 

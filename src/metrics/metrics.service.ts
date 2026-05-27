@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { PaginationDto } from '@/common/dtos/paginationDto.dto';
 import { InfiniteDataResponseType } from '@/common/types/infiniteDataResponse.type';
-import { MetricDefinition } from '@/generated/prisma/client';
+import { MetricDefinition, Prisma } from '@/generated/prisma/client';
 import { CreateMetricDefinitionDto } from './dto/create-metric-definition.dto';
 import { UpdateMetricDefinitionDto } from './dto/update-metric-definition.dto';
 import { IMetricsRepository } from './repositories/metrics.repository.interface';
@@ -19,34 +19,41 @@ export class MetricsService {
 
   constructor(
     @Inject(IMetricsRepository)
-    private readonly metricsRepository: IMetricsRepository,
+    private readonly metricsRepository: IMetricsRepository
   ) {}
 
   async createMetric(
-    metricData: CreateMetricDefinitionDto,
+    metricData: CreateMetricDefinitionDto
   ): Promise<MetricDefinition> {
     this.logger.debug(
-      `Trying to create/upsert metric definition with name="${metricData.name}"`,
+      `Trying to create metric definition with name="${metricData.name}"`
     );
 
     await this.assertLookupsExist(
       metricData.priorityId,
-      metricData.directionId,
+      metricData.directionId
     );
 
     this.assertValueRange(metricData.minValue, metricData.maxValue);
 
-    const metric = await this.metricsRepository.upsertByName(metricData);
+    const existing = await this.metricsRepository.findMetricByName(metricData.name);
+    if (existing) {
+      throw new ConflictException(
+        `Метрика с именем "${metricData.name}" уже существует`
+      );
+    }
+
+    const metric = await this.metricsRepository.createMetric(metricData);
 
     this.logger.log(
-      `Metric definition ready: id="${metric.id}", name="${metric.name}"`,
+      `Metric definition created: id="${metric.id}", name="${metric.name}"`
     );
 
     return metric;
   }
 
   async findAllMetrics(
-    queryParams: PaginationDto,
+    queryParams: PaginationDto
   ): Promise<InfiniteDataResponseType<MetricDefinition>> {
     this.logger.debug('Fetching all metric definitions');
 
@@ -62,7 +69,7 @@ export class MetricsService {
       this.logger.warn(`Metric definition with id="${id}" was not found`);
 
       throw new NotFoundException(
-        `Metric definition with id "${id}" was not found`,
+        `Metric definition with id "${id}" was not found`
       );
     }
 
@@ -71,7 +78,7 @@ export class MetricsService {
 
   async updateMetricById(
     id: string,
-    updateData: UpdateMetricDefinitionDto,
+    updateData: UpdateMetricDefinitionDto
   ): Promise<MetricDefinition> {
     this.logger.debug(`Trying to update metric definition id="${id}"`);
 
@@ -81,22 +88,22 @@ export class MetricsService {
       this.logger.warn(`Metric definition with id="${id}" was not found`);
 
       throw new NotFoundException(
-        `Metric definition with id "${id}" was not found`,
+        `Metric definition with id "${id}" was not found`
       );
     }
 
     if (updateData.name && updateData.name !== currentMetric.name) {
       const existingMetric = await this.metricsRepository.findMetricByName(
-        updateData.name,
+        updateData.name
       );
 
       if (existingMetric && existingMetric.id !== id) {
         this.logger.warn(
-          `Cannot update metric definition id="${id}": name="${updateData.name}" is already taken`,
+          `Cannot update metric definition id="${id}": name="${updateData.name}" is already taken`
         );
 
         throw new ConflictException(
-          `Metric definition with name "${updateData.name}" already exists`,
+          `Metric definition with name "${updateData.name}" already exists`
         );
       }
     }
@@ -104,7 +111,7 @@ export class MetricsService {
     if (updateData.priorityId || updateData.directionId) {
       await this.assertLookupsExist(
         updateData.priorityId,
-        updateData.directionId,
+        updateData.directionId
       );
     }
 
@@ -120,14 +127,35 @@ export class MetricsService {
 
     this.assertValueRange(nextMin, nextMax);
 
-    const updatedMetric = await this.metricsRepository.updateMetricById(
-      id,
-      updateData,
-    );
+    try {
+      const updatedMetric = await this.metricsRepository.updateMetricById(
+        id,
+        updateData
+      );
 
-    this.logger.log(`Metric definition updated successfully: id="${id}"`);
-
-    return updatedMetric;
+      this.logger.log(`Metric definition updated successfully: id="${id}"`);
+      return updatedMetric;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if ('P2002' === error.code) {
+          this.logger.warn(
+            `Race condition: name "${updateData.name}" was taken between check and update for metric id="${id}"`
+          );
+          throw new ConflictException(
+            `Metric definition with name "${updateData.name}" already exists`
+          );
+        }
+        if ('P2025' === error.code) {
+          this.logger.warn(
+            `Race condition: metric id="${id}" was deleted between check and update`
+          );
+          throw new NotFoundException(
+            `Metric definition with id "${id}" was not found`
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   async deleteMetricById(id: string): Promise<void> {
@@ -139,13 +167,26 @@ export class MetricsService {
       this.logger.warn(`Metric definition with id="${id}" was not found`);
 
       throw new NotFoundException(
-        `Metric definition with id "${id}" was not found`,
+        `Metric definition with id "${id}" was not found`
       );
     }
 
-    await this.metricsRepository.deleteMetricById(id);
-
-    this.logger.log(`Metric definition deleted successfully: id="${id}"`);
+    try {
+      await this.metricsRepository.deleteMetricById(id);
+      this.logger.log(`Metric definition deleted successfully: id="${id}"`);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if ('P2025' === error.code) {
+          this.logger.warn(
+            `Race condition: metric id="${id}" was deleted by another request between check and delete`
+          );
+          throw new NotFoundException(
+            `Metric definition with id "${id}" was not found`
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   // ------------------------------------------------------------------
@@ -154,14 +195,14 @@ export class MetricsService {
 
   private async assertLookupsExist(
     priorityId?: string,
-    directionId?: string,
+    directionId?: string
   ): Promise<void> {
     if (priorityId) {
       const ok = await this.metricsRepository.existsPriority(priorityId);
 
       if (!ok) {
         throw new BadRequestException(
-          `Metric priority with id "${priorityId}" was not found`,
+          `Metric priority with id "${priorityId}" was not found`
         );
       }
     }
@@ -171,7 +212,7 @@ export class MetricsService {
 
       if (!ok) {
         throw new BadRequestException(
-          `Metric direction with id "${directionId}" was not found`,
+          `Metric direction with id "${directionId}" was not found`
         );
       }
     }
@@ -179,7 +220,7 @@ export class MetricsService {
 
   private assertValueRange(
     minValue: number | null | undefined,
-    maxValue: number | null | undefined,
+    maxValue: number | null | undefined
   ): void {
     if (
       minValue !== null &&
@@ -189,7 +230,7 @@ export class MetricsService {
       Number(minValue) > Number(maxValue)
     ) {
       throw new BadRequestException(
-        `Invalid value range: minValue (${minValue}) must be <= maxValue (${maxValue})`,
+        `Invalid value range: minValue (${minValue}) must be <= maxValue (${maxValue})`
       );
     }
   }

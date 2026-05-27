@@ -3,7 +3,7 @@ CREATE TABLE "benchmarks" (
     "id" UUID NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "createdAt" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMPTZ(6) NOT NULL,
+    "updatedAt" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "benchmarks_pkey" PRIMARY KEY ("id")
 );

@@ -26,6 +26,7 @@ export class MetricsController {
   constructor(private readonly metricsService: MetricsService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   async createMetric(@Body() body: CreateMetricDefinitionDto) {
     return await this.metricsService.createMetric(body);
   }
@@ -44,7 +45,7 @@ export class MetricsController {
   @Patch(':id')
   async updateMetricById(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @Body() body: UpdateMetricDefinitionDto,
+    @Body() body: UpdateMetricDefinitionDto
   ) {
     return await this.metricsService.updateMetricById(id, body);
   }
