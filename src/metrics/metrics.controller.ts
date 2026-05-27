@@ -15,8 +15,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '@/common/decorators/role.decorator';
 import { PaginationDto } from '@/common/dtos/paginationDto.dto';
 import { Role } from '@/common/enums/role.enum';
-import { CreateMetricDto } from './dto/create-metric.dto';
-import { UpdateMetricDto } from './dto/update-metric.dto';
+import { CreateMetricDefinitionDto } from './dto/create-metric-definition.dto';
+import { UpdateMetricDefinitionDto } from './dto/update-metric-definition.dto';
 import { MetricsService } from './metrics.service';
 
 @ApiTags('metrics')
@@ -25,23 +25,26 @@ import { MetricsService } from './metrics.service';
 export class MetricsController {
   constructor(private readonly metricsService: MetricsService) {}
 
-  @Roles(Role.User, Role.Admin, Role.SuperUser)
   @Post()
-  async createMetric(@Body() body: CreateMetricDto) {
+  async createMetric(@Body() body: CreateMetricDefinitionDto) {
     return await this.metricsService.createMetric(body);
   }
 
-  @Roles(Role.User, Role.Admin, Role.SuperUser)
   @Get()
   async findAllMetrics(@Query() queryParams: PaginationDto) {
     return await this.metricsService.findAllMetrics(queryParams);
+  }
+
+  @Get(':id')
+  async findMetricById(@Param('id', new ParseUUIDPipe()) id: string) {
+    return await this.metricsService.findMetricById(id);
   }
 
   @Roles(Role.Admin, Role.SuperUser)
   @Patch(':id')
   async updateMetricById(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @Body() body: UpdateMetricDto
+    @Body() body: UpdateMetricDefinitionDto,
   ) {
     return await this.metricsService.updateMetricById(id, body);
   }
@@ -49,9 +52,7 @@ export class MetricsController {
   @Roles(Role.Admin, Role.SuperUser)
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteMetricById(
-    @Param('id', new ParseUUIDPipe()) id: string
-  ) {
+  async deleteMetricById(@Param('id', new ParseUUIDPipe()) id: string) {
     return await this.metricsService.deleteMetricById(id);
   }
 }
