@@ -1,0 +1,167 @@
+model MetricPriorityLookup {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(64)
+  name String @db.VarChar(128)
+
+  description String? @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  metrics MetricDefinition[]
+
+  @@map("metric_priority_lookups")
+}
+
+model MetricDirectionLookup {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(64)
+  name String @db.VarChar(128)
+
+  description String? @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  metrics MetricDefinition[]
+
+  @@map("metric_direction_lookups")
+}
+
+// =====================================================================
+// METRIC DEFINITION (catalogue entity)
+// =====================================================================
+
+model MetricDefinition {
+  id String @id @default(uuid()) @db.Uuid
+
+  name        String  @unique @db.VarChar(255)
+  displayName String? @db.VarChar(255)
+
+  priorityId String                @db.Uuid
+  priority   MetricPriorityLookup  @relation(fields: [priorityId], references: [id], onDelete: Restrict)
+
+  directionId String                @db.Uuid
+  direction   MetricDirectionLookup @relation(fields: [directionId], references: [id], onDelete: Restrict)
+
+  minValue    Decimal? @db.Decimal(12, 6)
+  maxValue    Decimal? @db.Decimal(12, 6)
+  targetValue Decimal? @db.Decimal(12, 6)
+
+  evaluationLogic              String? @db.Text
+  requiredGigaChatQualityLevel String? @db.Text
+
+  metadata Json @default("{}") @db.JsonB
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  results    MetricResult[]
+  uploadRows MetricUploadRow[]
+
+  @@index([priorityId])
+  @@map("metric_definitions")
+}
+
+// =====================================================================
+// METRIC RESULT (resolved / matched evaluation outcome)
+// =====================================================================
+
+model MetricResult {
+  id String @id @default(uuid()) @db.Uuid
+
+  // TODO: подключить relation, когда появится модель EvaluationRun
+  runId String? @db.Uuid
+
+  benchmarkId String    @db.Uuid
+  benchmark   Benchmark @relation(fields: [benchmarkId], references: [id], onDelete: Cascade)
+
+  // TODO: подключить relation, когда появится модель BenchmarkTest
+  testId String @db.Uuid
+
+  // TODO: подключить relation, когда появится модель DatasetSubset
+  subsetId String? @db.Uuid
+
+  metricId String           @db.Uuid
+  metric   MetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  // TODO: подключить relation, когда появится модель Model
+  modelId String @db.Uuid
+
+  value    Decimal @db.Decimal(14, 6)
+  rawValue String? @db.VarChar(255)
+
+  obtainedAt DateTime @db.Timestamptz(6)
+
+  importSource     String? @db.VarChar(500)
+  rawModelName     String? @db.VarChar(500)
+  rawBenchmarkName String? @db.VarChar(500)
+  rawTestName      String? @db.VarChar(500)
+  rawSubsetName    String? @db.VarChar(500)
+  rawMetricName    String? @db.VarChar(255)
+
+  metadata Json @default("{}") @db.JsonB
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  uploadRows MetricUploadRow[]
+
+  @@index([benchmarkId, testId, metricId, modelId, obtainedAt])
+  @@index([subsetId])
+  @@index([runId])
+  @@map("metric_results")
+}
+
+// =====================================================================
+// METRIC UPLOAD ROW (raw import row, may be unresolved)
+// =====================================================================
+
+model MetricUploadRow {
+  id String @id @default(uuid()) @db.Uuid
+
+  // TODO: подключить relation, когда появится модель EvaluationRun
+  runId String? @db.Uuid
+
+  // TODO: подключить relation, когда появится модель Model
+  modelId       String? @db.Uuid
+  rawModelName  String  @db.VarChar(500)
+
+  benchmarkId      String?    @db.Uuid
+  benchmark        Benchmark? @relation(fields: [benchmarkId], references: [id], onDelete: SetNull)
+  rawBenchmarkName String     @db.VarChar(500)
+
+  // TODO: подключить relation, когда появится модель BenchmarkTest
+  testId      String? @db.Uuid
+  rawTestName String  @db.VarChar(500)
+
+  // TODO: подключить relation, когда появится модель DatasetSubset
+  subsetId      String? @db.Uuid
+  rawSubsetName String? @db.VarChar(500)
+
+  metricId      String?           @db.Uuid
+  metric        MetricDefinition? @relation(fields: [metricId], references: [id], onDelete: SetNull)
+  rawMetricName String            @db.VarChar(255)
+
+  metricValue    Decimal @db.Decimal(14, 6)
+  rawMetricValue String? @db.VarChar(255)
+
+  obtainedAt DateTime @db.Timestamptz(6)
+
+  metricResultId String?       @db.Uuid
+  metricResult   MetricResult? @relation(fields: [metricResultId], references: [id], onDelete: SetNull)
+
+  importBatchId   String? @db.VarChar(255)
+  sourceRowNumber Int?
+  importSource    String? @db.VarChar(500)
+
+  rawPayload Json @default("{}") @db.JsonB
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([modelId, benchmarkId, testId, subsetId, metricId, obtainedAt])
+  @@index([rawModelName, rawBenchmarkName, rawTestName, rawMetricName])
+  @@index([importBatchId, sourceRowNumber])
+  @@map("metric_upload_rows")
+}

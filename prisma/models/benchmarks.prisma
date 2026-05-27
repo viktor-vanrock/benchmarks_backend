@@ -1,0 +1,16 @@
+// Минимальная заготовка для модели Benchmark.
+// Полная схема Benchmark будет реализована в отдельной задаче.
+// Здесь нужны только обратные связи, чтобы работали FK из metric_results
+// и metric_upload_rows.
+model Benchmark {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  metricResults    MetricResult[]
+  metricUploadRows MetricUploadRow[]
+
+  @@map("benchmarks")
+}
